@@ -1,7 +1,10 @@
 # ministat
 A small tool to do the statistics legwork on benchmarks etc.
 
-Written by Poul-Henning Kamp, lured into a dark Linux alley and clubbed over the head and hauled away to Github by yours truly.
+# Perf 
+## Flamegraph
+Click on image below to get an interactive version
+![Flamegraph](https://raw.githubusercontent.com/rashkov/ministat/master/perf-ministat.svg)
 
 ## Build & Install
 
