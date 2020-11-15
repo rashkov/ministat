@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <time.h>
 
 #include "queue.h"
 
@@ -126,7 +127,10 @@ double student [NSTUDENT + 1][NCONF] = {
 };
 
 #define	MAX_DS	8
+
 static char symbol[MAX_DS] = { ' ', 'x', '+', '*', '%', '#', '@', 'O' };
+struct timespec begin, end, q_begin, q_end, str_begin, str_end;
+static unsigned long long int timing[4];
 
 struct dataset {
 	char *name;
@@ -154,10 +158,11 @@ AddPoint(struct dataset *ds, double a)
 
 	if (ds->n >= ds->lpoints) {
 		dp = ds->points;
-		ds->lpoints *= 4;
+		ds->lpoints *= 4;	
 		ds->points = calloc(sizeof *ds->points, ds->lpoints);
 		memcpy(ds->points, dp, sizeof *dp * ds->n);
 		free(dp);
+		
 	}
 	ds->points[ds->n++] = a;
 	ds->sy += a;
@@ -474,16 +479,24 @@ ReadSet(const char *n, int column, const char *delim)
 		i = strlen(buf);
 		if (buf[i-1] == '\n')
 			buf[i-1] = '\0';
+		clock_gettime(CLOCK_MONOTONIC, &str_begin);
 		for (i = 1, t = strtok(buf, delim);
 		     t != NULL && *t != '#';
 		     i++, t = strtok(NULL, delim)) {
 			if (i == column)
 				break;
 		}
+		clock_gettime(CLOCK_MONOTONIC, &str_end);
+		timing[0]= (str_end.tv_sec - str_begin.tv_sec) + (str_end.tv_nsec - str_begin.tv_nsec)*1e-9;
 		if (t == NULL || *t == '#')
 			continue;
 
+		//timing
+		clock_gettime(CLOCK_MONOTONIC, &str_begin);
 		d = strtod(t, &p);
+		clock_gettime(CLOCK_MONOTONIC, &str_end);
+		timing[1]= (str_end.tv_sec - str_begin.tv_sec) + (str_end.tv_nsec - str_begin.tv_nsec)*1e-9;
+		//timing
 		if (p != NULL && *p != '\0')
 			err(2, "Invalid data on line %d in %s\n", line, n);
 		if (*buf != '\0')
@@ -495,7 +508,13 @@ ReadSet(const char *n, int column, const char *delim)
 		    "Dataset %s must contain at least 3 data points\n", n);
 		exit (2);
 	}
+
+	clock_gettime(CLOCK_MONOTONIC, &q_begin);
 	qsort(s->points, s->n, sizeof *s->points, dbl_cmp);
+	clock_gettime(CLOCK_MONOTONIC, &q_end);
+	timing[2]= (q_end.tv_sec - q_begin.tv_sec) + (q_end.tv_nsec - q_begin.tv_nsec)*1e-9;
+
+	
 	return (s);
 }
 
@@ -536,8 +555,11 @@ main(int argc, char **argv)
 	int flag_s = 0;
 	int flag_n = 0;
 	int flag_q = 0;
+	int flag_v = 0;
 	int termwidth = 74;
 
+	
+	
 	if (isatty(STDOUT_FILENO)) {
 		struct winsize wsz;
 
@@ -547,9 +569,10 @@ main(int argc, char **argv)
 			 wsz.ws_col > 0)
 			termwidth = wsz.ws_col - 2;
 	}
+	
 
 	ci = -1;
-	while ((c = getopt(argc, argv, "C:c:d:snqw:")) != -1)
+	while ((c = getopt(argc, argv, "C:c:d:snvqw:")) != -1)
 		switch (c) {
 		case 'C':
 			column = strtol(optarg, &p, 10);
@@ -589,6 +612,9 @@ main(int argc, char **argv)
 			if (termwidth < 0)
 				usage("Unable to move beyond left margin.");
 			break;
+		case 'v':
+			flag_v = 1;
+			break;
 		default:
 			usage("Unknown option");
 			break;
@@ -598,17 +624,24 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
+
+	
 	if (argc == 0) {
+		clock_gettime(CLOCK_MONOTONIC, &begin);
 		ds[0] = ReadSet("-", column, delim);
+		clock_gettime(CLOCK_MONOTONIC, &end);
 		nds = 1;
 	} else {
 		if (argc > (MAX_DS - 1))
 			usage("Too many datasets.");
 		nds = argc;
+		clock_gettime(CLOCK_MONOTONIC, &begin);
 		for (i = 0; i < nds; i++)
 			ds[i] = ReadSet(argv[i], column, delim);
+		clock_gettime(CLOCK_MONOTONIC, &end);
 	}
-
+	timing[3] = (end.tv_sec - begin.tv_sec) + (end.tv_nsec - begin.tv_nsec)*1e-9;
+	
 	for (i = 0; i < nds; i++) 
 		printf("%c %s\n", symbol[i+1], ds[i]->name);
 
@@ -622,10 +655,24 @@ main(int argc, char **argv)
 	}
 	VitalsHead();
 	Vitals(ds[0], 1);
+
+	
 	for (i = 1; i < nds; i++) {
 		Vitals(ds[i], i + 1);
 		if (!flag_n)
 			Relative(ds[i], ds[0], ci);
 	}
+	
+
+	if (flag_v){
+		printf("Time spent using strtok function: %llu seconds.\n", timing[0]);
+		printf("Time spent using strtod function: %llu seconds.\n", timing[1]);
+		printf("Time spent sorting data: %llu second(s).\n", timing[2]);
+		printf("Time spent using ReadSet: %llu seconds. \n", timing[3]);
+	}
+
+   	
+
 	exit(0);
+	
 }
