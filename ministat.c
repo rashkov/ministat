@@ -485,7 +485,6 @@ ReadSet(const char *n, int column, const char *delim)
 	s = NewSet();
 	s->name = strdup(n);
 	line = 0;
-	//clock_gettime(CLOCK_MONOTONIC, &str_begin);
 	while (fgets(buf, sizeof buf, f) != NULL) {
 		line++;
 
@@ -507,21 +506,19 @@ ReadSet(const char *n, int column, const char *delim)
 		if (t == NULL || *t == '#')
 			continue;
 
-		//timing
+
 		clock_gettime(CLOCK_MONOTONIC, &str_begin);
 		d = strtod(t, &p);
 		clock_gettime(CLOCK_MONOTONIC, &str_end);
 		timing[1] += elapsed_us(&str_begin, &str_end);
 		iterations[1] += 1;
-		//timing
+	
 
 		if (p != NULL && *p != '\0')
 			err(2, "Invalid data on line %d in %s\n", line, n);
 		if (*buf != '\0')
 			AddPoint(s, d);
 	}
-	//clock_gettime(CLOCK_MONOTONIC, &str_end);
-	
 	fclose(f);
 
 	if (s->n < 3) {
@@ -664,16 +661,6 @@ main(int argc, char **argv)
 	timing[3] = elapsed_us(&begin, &end);
 	iterations[3] += 1;
 
-	
-	float t0, t1, t2, t3;
-	timing[0] /= iterations[0]; //str
-	//t0 = (float)timing[0]/iterations[0];
-	t1 = (float) timing[1] / iterations[1]; //std
-	t2 = (float) timing[2] / iterations[2]; //sorting
-	t3 = (float)timing[3] / iterations[3];
-
-	
-
 	for (i = 0; i < nds; i++) 
 		printf("%c %s\n", symbol[i+1], ds[i]->name);
 
@@ -697,10 +684,10 @@ main(int argc, char **argv)
 	
 
 	if (flag_v){
-		printf("Time spent using strtok function: %f seconds.\n", (float)timing[0]);
-		printf("Time spent using strtod function: %f seconds.\n", t1);
-		printf("Time spent using sorting function: %f seconds.\n", t2);
-		printf("Time spent using ReadSet: %f seconds. \n", t3);
+		printf("Time spent using strtok function: %f seconds.\n", (float)timing[0]/iterations[0]);
+		printf("Time spent using strtod function: %f seconds.\n", (float)timing[1]/iterations[1]);
+		printf("Time spent using sorting function: %f seconds.\n", (float)timing[2]/iterations[2]);
+		printf("Time spent using ReadSet: %f seconds. \n", (float)timing[3]/iterations[3]);
 	}
 
    	
