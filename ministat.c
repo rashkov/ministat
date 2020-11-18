@@ -1,3 +1,4 @@
+
 /*
  * ----------------------------------------------------------------------------
  * "THE BEER-WARE LICENSE" (Revision 42):
@@ -447,7 +448,9 @@ dbl_cmp(const void *a, const void *b)
 static struct dataset *
 ReadSet(const char *n, int column, const char *delim)
 {
-	FILE *f;
+
+	int *fd;
+	//FILE *f;
 	char buf[BUFSIZ], *p, *t;
 	struct dataset *s;
 	double d;
@@ -455,20 +458,20 @@ ReadSet(const char *n, int column, const char *delim)
 	int i;
 
 	if (n == NULL) {
-		f = stdin;
+		fd = stdin;
 		n = "<stdin>";
 	} else if (!strcmp(n, "-")) {
-		f = stdin;
+		fd = stdin;
 		n = "<stdin>";
 	} else {
-		f = fopen(n, "r");
+		fd = open(n, "O_RDONLY");
 	}
-	if (f == NULL)
+	if (fd == NULL)
 		err(1, "Cannot open %s", n);
 	s = NewSet();
 	s->name = strdup(n);
 	line = 0;
-	while (fgets(buf, sizeof buf, f) != NULL) {
+	while (gets(buf, sizeof buf, fd) != NULL) {
 		line++;
 
 		i = strlen(buf);
@@ -489,7 +492,7 @@ ReadSet(const char *n, int column, const char *delim)
 		if (*buf != '\0')
 			AddPoint(s, d);
 	}
-	fclose(f);
+	close(fd);
 	if (s->n < 3) {
 		fprintf(stderr,
 		    "Dataset %s must contain at least 3 data points\n", n);
