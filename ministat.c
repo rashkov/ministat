@@ -451,7 +451,7 @@ static struct dataset *
 ReadSet(const char *n, int column, const char *delim)
 {
 
-	int *fd;
+	int fd = -1;
 	//FILE *f;
 	char buf[BUFSIZ], *p, *t;
 	struct dataset *s;
@@ -460,25 +460,27 @@ ReadSet(const char *n, int column, const char *delim)
 	int i;
 
 	if (n == NULL) {
-		*fd =fileno (stdin);
+		fd = fileno (stdin);
 		n = "<stdin>";
 	} else if (!strcmp(n, "-")) {
-		*fd = fileno(stdin);
+		fd = fileno(stdin);
 		n = "<stdin>";
 	} else {
-		*fd = open(n, O_RDONLY);
+		fd = open(n, O_RDONLY);
 	}
-	if (fd == NULL)
+	if (fd == -1)
 		err(1, "Cannot open %s", n);
 	s = NewSet();
 	s->name = strdup(n);
 	line = 0;
-	while (open(buf, sizeof buf, *fd) !='\0') {
+	while (read(fd, buf, sizeof buf) != 0) {
 		line++;
 
 		i = strlen(buf);
+		printf("buf length: %d, buf: %s\n", (int)strlen(buf), buf);
 		if (buf[i-1] == '\n')
 			buf[i-1] = '\0';
+
 		for (i = 1, t = strtok(buf, delim);
 		     t != NULL && *t != '#';
 		     i++, t = strtok(NULL, delim)) {
@@ -494,7 +496,7 @@ ReadSet(const char *n, int column, const char *delim)
 		if (*buf != '\0')
 			AddPoint(s, d);
 	}
-	close(*fd);
+	close(fd);
 	if (s->n < 3) {
 		fprintf(stderr,
 		    "Dataset %s must contain at least 3 data points\n", n);
