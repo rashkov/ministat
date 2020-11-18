@@ -9,7 +9,9 @@
  *
  */
 #include <sys/ioctl.h>
-
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <err.h>
 #include <math.h>
 #include <stdio.h>
@@ -458,20 +460,20 @@ ReadSet(const char *n, int column, const char *delim)
 	int i;
 
 	if (n == NULL) {
-		fd = stdin;
+		*fd =fileno (stdin);
 		n = "<stdin>";
 	} else if (!strcmp(n, "-")) {
-		fd = stdin;
+		*fd = fileno(stdin);
 		n = "<stdin>";
 	} else {
-		fd = open(n, "O_RDONLY");
+		*fd = open(n, O_RDONLY);
 	}
 	if (fd == NULL)
 		err(1, "Cannot open %s", n);
 	s = NewSet();
 	s->name = strdup(n);
 	line = 0;
-	while (gets(buf, sizeof buf, fd) != NULL) {
+	while (open(buf, sizeof buf, *fd) !='\0') {
 		line++;
 
 		i = strlen(buf);
@@ -492,7 +494,7 @@ ReadSet(const char *n, int column, const char *delim)
 		if (*buf != '\0')
 			AddPoint(s, d);
 	}
-	close(fd);
+	close(*fd);
 	if (s->n < 3) {
 		fprintf(stderr,
 		    "Dataset %s must contain at least 3 data points\n", n);
