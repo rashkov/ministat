@@ -1,8 +1,11 @@
 #!/bin/bash
+set -euxo pipefail
 
-testdir=$(dirname $(readlink -f $0))
-outdir="$testdir/out"
-datadir="$outdir/data"
+testdir="$(dirname $(readlink -f $0))"
+gendir="$testdir/data_gen"
+datadir="$testdir/input_data"
+
+cd "$gendir" && make
 
 mkdir -p "${datadir}"
 
