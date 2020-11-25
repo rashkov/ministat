@@ -4,3 +4,4 @@ ministat
 test/input_data
 test/executables
 test/output
+test/tmp
