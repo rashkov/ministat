@@ -452,13 +452,12 @@ ReadSet(const char *n, int column, const char *delim)
 {
 
 	int fd = -1;
-	//FILE *f;
-	char buf[BUFSIZ], *p, *t;
+	char buf[6], *p, *t;
+	printf("BUFsize: %d",BUFSIZ);
 	struct dataset *s;
 	double d;
 	int line;
 	int i;
-
 	if (n == NULL) {
 		fd = fileno (stdin);
 		n = "<stdin>";
@@ -473,17 +472,34 @@ ReadSet(const char *n, int column, const char *delim)
 	s = NewSet();
 	s->name = strdup(n);
 	line = 0;
+	char * found;
+	int cutoff;
+	char *tmp= NULL;
 	while (read(fd, buf, sizeof buf) != 0) {
 		line++;
-
+		if(cutoff==1){
+	        printf("hello tmp %s ",tmp);
+                printf("hello buf %s ",buf);
+                strcat(tmp,buf); 
+                printf("hi tmp %s ",tmp);
+                printf("hi buf %s ",buf);
+		}	
+	
+		tmp=buf; 
 		i = strlen(buf);
-		printf("buf length: %d, buf: %s\n", (int)strlen(buf), buf);
+		cutoff=1;
+		printf("buf length: %d, buf: %s, tmp: %s\n", (int)strlen(buf), buf,tmp);
+ 		while((found = strsep(&tmp, "\n")) != NULL && tmp!= NULL){		 
+	//	if (tmp==NUL) cutoff=0;
+		cutoff=0;
+		printf("found: %s\n", found);
+    		printf("str: %s\n", tmp);
+
 		if (buf[i-1] == '\n')
 			buf[i-1] = '\0';
-
-		for (i = 1, t = strtok(buf, delim);
+		for (i = 1, t = strsep(&found, delim);
 		     t != NULL && *t != '#';
-		     i++, t = strtok(NULL, delim)) {
+		     i++, t = strsep(&found, delim)) {
 			if (i == column)
 				break;
 		}
@@ -495,6 +511,15 @@ ReadSet(const char *n, int column, const char *delim)
 			err(2, "Invalid data on line %d in %s\n", line, n);
 		if (*buf != '\0')
 			AddPoint(s, d);
+		}
+		if(cutoff==1){
+		tmp = realloc(tmp,sizeof(buf));
+		mempcpy(&tmp[0],buf,sizeof(buf));
+		read(fd, buf, sizeof buf);
+		strcat(tmp,buf);
+		printf(" cut off buf: %s\n", buf);
+		printf(" cut off tmp: %s\n", tmp);	
+		}
 	}
 	close(fd);
 	if (s->n < 3) {
