@@ -15,7 +15,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
+#include <time.h>
+#include <pthread.h>
 #include "queue.h"
 
 #define NSTUDENT 100
@@ -126,7 +127,34 @@ double student [NSTUDENT + 1][NCONF] = {
 };
 
 #define	MAX_DS	8
+
 static char symbol[MAX_DS] = { ' ', 'x', '+', '*', '%', '#', '@', 'O' };
+struct timespec begin, end, q_begin, q_end, stk_begin, stk_end, str_begin, str_end;
+struct rs_arg {
+	char file;
+	int col;
+	char del;
+	struct datastruct *s; 
+};
+static unsigned long long int timing[]= {0,0,0,0,0};
+static unsigned long long int iterations[]= {0,0,0,0,0};
+
+
+//Arguements of ReadSet are
+// const char *n, int column, const char *delim
+// n = file
+// column = ??
+// delim = chosen deliminator
+
+
+static unsigned long long
+elapsed_us(struct timespec *a, struct timespec *b)
+{
+        unsigned long long a_p = (a->tv_sec * 1000000ULL) + a->tv_nsec / 1000;
+        unsigned long long b_p = (b->tv_sec * 1000000ULL) + b->tv_nsec / 1000;
+
+        return b_p - a_p;
+}
 
 struct dataset {
 	char *name;
@@ -154,10 +182,11 @@ AddPoint(struct dataset *ds, double a)
 
 	if (ds->n >= ds->lpoints) {
 		dp = ds->points;
-		ds->lpoints *= 4;
+		ds->lpoints *= 4;	
 		ds->points = calloc(sizeof *ds->points, ds->lpoints);
 		memcpy(ds->points, dp, sizeof *dp * ds->n);
 		free(dp);
+		
 	}
 	ds->points[ds->n++] = a;
 	ds->sy += a;
@@ -444,15 +473,21 @@ dbl_cmp(const void *a, const void *b)
 		return (0);
 }
 
-static struct dataset *
-ReadSet(const char *n, int column, const char *delim)
+void *
+ReadSet(void *arg)
+//const char *n, int column, const char *delim
 {
+	struct rs_arg *rs = (struct rs_arg*) arg;
 	FILE *f;
 	char buf[BUFSIZ], *p, *t;
 	struct dataset *s;
 	double d;
 	int line;
 	int i;
+	//Set the argument to the values in the function
+	const char *n = rs->file;
+	int column = rs->col;
+	const char *delim = rs->del;
 
 	if (n == NULL) {
 		f = stdin;
@@ -468,35 +503,60 @@ ReadSet(const char *n, int column, const char *delim)
 	s = NewSet();
 	s->name = strdup(n);
 	line = 0;
+	//clock_gettime(CLOCK_MONOTONIC, &str_begin);
 	while (fgets(buf, sizeof buf, f) != NULL) {
 		line++;
 
 		i = strlen(buf);
 		if (buf[i-1] == '\n')
 			buf[i-1] = '\0';
-		for (i = 1, t = strtok(buf, delim);
-		     t != NULL && *t != '#';
-		     i++, t = strtok(NULL, delim)) {
+
+		
+		clock_gettime(CLOCK_MONOTONIC, &stk_begin);
+		for (i = 1, t = strtok(buf, delim); t != NULL && *t != '#'; i++, t = strtok(NULL, delim)) {
 			if (i == column)
 				break;
 		}
+		clock_gettime(CLOCK_MONOTONIC, &stk_end);
+		timing[0] += elapsed_us(&stk_begin, &stk_end);
+		iterations[0] += 1;
+		
+
 		if (t == NULL || *t == '#')
 			continue;
 
+		//timing
+		clock_gettime(CLOCK_MONOTONIC, &str_begin);
 		d = strtod(t, &p);
+		clock_gettime(CLOCK_MONOTONIC, &str_end);
+		timing[1] += elapsed_us(&str_begin, &str_end);
+		iterations[1] += 1;
+		//timing
+
 		if (p != NULL && *p != '\0')
 			err(2, "Invalid data on line %d in %s\n", line, n);
 		if (*buf != '\0')
 			AddPoint(s, d);
 	}
+	//clock_gettime(CLOCK_MONOTONIC, &str_end);
+	
 	fclose(f);
+
 	if (s->n < 3) {
 		fprintf(stderr,
 		    "Dataset %s must contain at least 3 data points\n", n);
 		exit (2);
 	}
+
+	clock_gettime(CLOCK_MONOTONIC, &q_begin);
 	qsort(s->points, s->n, sizeof *s->points, dbl_cmp);
-	return (s);
+	clock_gettime(CLOCK_MONOTONIC, &q_end);
+
+	timing[2] += elapsed_us(&q_begin, &q_end);
+	iterations[2] += 1;
+	//return (s); // set s to rs->s = s;
+	rs -> s = s; // don't think this works
+	return NULL;
 }
 
 static void
@@ -536,8 +596,11 @@ main(int argc, char **argv)
 	int flag_s = 0;
 	int flag_n = 0;
 	int flag_q = 0;
+	int flag_v = 0;
 	int termwidth = 74;
 
+	
+	
 	if (isatty(STDOUT_FILENO)) {
 		struct winsize wsz;
 
@@ -547,9 +610,10 @@ main(int argc, char **argv)
 			 wsz.ws_col > 0)
 			termwidth = wsz.ws_col - 2;
 	}
+	
 
 	ci = -1;
-	while ((c = getopt(argc, argv, "C:c:d:snqw:")) != -1)
+	while ((c = getopt(argc, argv, "C:c:d:snvqw:")) != -1)
 		switch (c) {
 		case 'C':
 			column = strtol(optarg, &p, 10);
@@ -589,6 +653,9 @@ main(int argc, char **argv)
 			if (termwidth < 0)
 				usage("Unable to move beyond left margin.");
 			break;
+		case 'v':
+			flag_v = 1;
+			break;
 		default:
 			usage("Unknown option");
 			break;
@@ -598,16 +665,43 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
+
+	//pthread_t tid;
+	pthread_t tid[argc];
+	struct rs_arg *RS = (struct rs_arg*) malloc(sizeof(struct rs_arg));
+
 	if (argc == 0) {
-		ds[0] = ReadSet("-", column, delim);
+		clock_gettime(CLOCK_MONOTONIC, &begin);
+		RS->file = "-";
+		RS->col = column;
+		RS->del = delim;
+		pthread_create(&tid[0], NULL, ReadSet(&RS), (void*)RS);
+		pthread_join(tid[0],NULL);
+		ds[0] = RS->s;
+		clock_gettime(CLOCK_MONOTONIC, &end);
 		nds = 1;
 	} else {
 		if (argc > (MAX_DS - 1))
 			usage("Too many datasets.");
 		nds = argc;
-		for (i = 0; i < nds; i++)
-			ds[i] = ReadSet(argv[i], column, delim);
+
+		clock_gettime(CLOCK_MONOTONIC, &begin);
+		for (i = 0; i < nds; i++){
+			RS->file = argv[i];
+			RS->col = column;
+			RS->del = delim;
+			pthread_create(&tid[i], NULL, ReadSet(&RS), (void*)RS);
+		//returns s so s returns 
+			ds[i] = RS -> s;
+		}
+		for (i = 0; i < nds; i++){
+			pthread_join(tid[i],NULL);
+		}
+
+		clock_gettime(CLOCK_MONOTONIC, &end);
 	}
+	timing[3] = elapsed_us(&begin, &end);
+	iterations[3] += 1;
 
 	for (i = 0; i < nds; i++) 
 		printf("%c %s\n", symbol[i+1], ds[i]->name);
@@ -622,10 +716,24 @@ main(int argc, char **argv)
 	}
 	VitalsHead();
 	Vitals(ds[0], 1);
+
+	
 	for (i = 1; i < nds; i++) {
 		Vitals(ds[i], i + 1);
 		if (!flag_n)
 			Relative(ds[i], ds[0], ci);
 	}
+	
+
+	if (flag_v){
+		printf("Time spent using strtok function: %f seconds.\n", (float)timing[0]/iterations[0]);
+		printf("Time spent using strtod function: %f seconds.\n", (float)timing[1]/iterations[1]);
+		printf("Time spent using sorting function: %f seconds.\n", (float)timing[2]/iterations[2]);
+		printf("Time spent using ReadSet: %f seconds. \n", (float)timing[3]/iterations[3]);
+	}
+
+   	
+
 	exit(0);
+	
 }
