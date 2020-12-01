@@ -134,7 +134,7 @@ struct rs_arg {
 	char file;
 	int col;
 	char del;
-	struct datastruct *s; 
+	struct dataset *s; 
 };
 static unsigned long long int timing[]= {0,0,0,0,0};
 static unsigned long long int iterations[]= {0,0,0,0,0};
