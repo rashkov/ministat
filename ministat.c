@@ -557,7 +557,7 @@ ReadSet(void* arg)
 	timing[2] += elapsed_us(&q_begin, &q_end);
 	iterations[2] += 1;
 	//return (s); // set s to rs->s = s;
-	RS -> s = s; // don't think this works
+	rs -> s = s; // don't think this works
 	return NULL;
 }
 
@@ -685,17 +685,16 @@ main(int argc, char **argv)
 		nds = argc;
 
 		clock_gettime(CLOCK_MONOTONIC, &begin);
+		struct rs_arg RS[argc];
 		for (i = 0; i < nds; i++){
-			RS->file = argv[i];
-			RS->col = column;
-			RS->del = delim;
-			pthread_create(&tid[i], NULL, &ReadSet, (void*)&RS);
-		//returns s so s returns 
-			//ds[i] = RS -> s;
+			RS[i].file = argv[i];
+			RS[i].col = column;
+			RS[i].del = delim;
+			pthread_create(&tid[i], NULL, &ReadSet, (void*)&RS[i]);
 		}
 		for (i = 0; i < nds; i++){
 			pthread_join(tid[i],NULL);
-			ds[i] = RS -> s;
+			ds[i] = RS[i].s;
 		}
 
 		clock_gettime(CLOCK_MONOTONIC, &end);
