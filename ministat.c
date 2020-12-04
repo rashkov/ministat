@@ -131,11 +131,12 @@ double student [NSTUDENT + 1][NCONF] = {
 static char symbol[MAX_DS] = { ' ', 'x', '+', '*', '%', '#', '@', 'O' };
 struct timespec begin, end, q_begin, q_end, stk_begin, stk_end, str_begin, str_end;
 struct rs_arg {
-	char file;
+	const char *file;
 	int col;
-	char del;
+	const char *del;
 	struct dataset *s; 
-};
+} *RS;
+
 static unsigned long long int timing[]= {0,0,0,0,0};
 static unsigned long long int iterations[]= {0,0,0,0,0};
 
@@ -474,10 +475,10 @@ dbl_cmp(const void *a, const void *b)
 }
 
 void *
-ReadSet(void *arg)
+ReadSet(void* arg)
 //const char *n, int column, const char *delim
 {
-	struct rs_arg *rs = (struct rs_arg*) arg;
+	
 	FILE *f;
 	char buf[BUFSIZ], *p, *t;
 	struct dataset *s;
@@ -485,10 +486,11 @@ ReadSet(void *arg)
 	int line;
 	int i;
 	//Set the argument to the values in the function
+	struct rs_arg *rs = (struct rs_arg *) arg;
 	const char *n = rs->file;
 	int column = rs->col;
 	const char *delim = rs->del;
-
+	
 	if (n == NULL) {
 		f = stdin;
 		n = "<stdin>";
@@ -555,7 +557,7 @@ ReadSet(void *arg)
 	timing[2] += elapsed_us(&q_begin, &q_end);
 	iterations[2] += 1;
 	//return (s); // set s to rs->s = s;
-	rs -> s = s; // don't think this works
+	RS -> s = s; // don't think this works
 	return NULL;
 }
 
@@ -665,17 +667,14 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-
-	//pthread_t tid;
 	pthread_t tid[argc];
-	struct rs_arg *RS = (struct rs_arg*) malloc(sizeof(struct rs_arg));
 
 	if (argc == 0) {
 		clock_gettime(CLOCK_MONOTONIC, &begin);
 		RS->file = "-";
 		RS->col = column;
 		RS->del = delim;
-		pthread_create(&tid[0], NULL, ReadSet(&RS), (void*)RS);
+		pthread_create(&tid[0], NULL, ReadSet, (void*)RS);
 		pthread_join(tid[0],NULL);
 		ds[0] = RS->s;
 		clock_gettime(CLOCK_MONOTONIC, &end);
@@ -690,12 +689,13 @@ main(int argc, char **argv)
 			RS->file = argv[i];
 			RS->col = column;
 			RS->del = delim;
-			pthread_create(&tid[i], NULL, ReadSet(&RS), (void*)RS);
+			pthread_create(&tid[i], NULL, &ReadSet, (void*)&RS);
 		//returns s so s returns 
-			ds[i] = RS -> s;
+			//ds[i] = RS -> s;
 		}
 		for (i = 0; i < nds; i++){
 			pthread_join(tid[i],NULL);
+			ds[i] = RS -> s;
 		}
 
 		clock_gettime(CLOCK_MONOTONIC, &end);
