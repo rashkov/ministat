@@ -11,8 +11,13 @@ if [ -d "$tablesdir" ]
 then
   rm -r "$tablesdir"
 fi
-mkdir -p "$chartsdir"
 mkdir -p "$tablesdir"
+
+if [ -d "$chartsdir" ]
+then
+  rm -r "$chartsdir"
+fi
+mkdir -p "$chartsdir"
 
 for exe in "$exesdir"/*; do
   for file in "$datadir"/*; do
@@ -29,4 +34,70 @@ for exe in "$exesdir"/*; do
       exit 1
     fi
   done
+  paste -d$'\n' "$tablesdir/$exename"/*.txt |uniq |sort -nk1 > "$tablesdir/$exename.tsv"
 done
+
+
+filepaths=( "$tablesdir"/*.tsv )
+filenames=( )
+for i in "${!filepaths[@]}";
+do
+  filenames[i]=$(basename ${filepaths[i]})
+done
+
+printf "\nData tables written to: $tablesdir\n\n"
+
+# Function for calling out to gnuplot
+create_plots () {
+  colNum="$1"
+  colName="$2"
+  gnuplot -p <<- EOF
+    set datafile separator '\t'
+    set ylabel "log($colName)" noenhanced # label for the Y axis
+    set xlabel 'log(num_points)' noenhanced # label for the X axis
+    set logscale x 2
+    set logscale y 2
+
+    filepaths = "${filepaths[@]}"
+    filenames = "${filenames[@]}"
+    plot for [i=1:words(filepaths)] word(filepaths,i) using 1:$colNum with lines smooth unique title word(filenames,i) noenhanced
+
+    set term svg
+    set output "$chartsdir/$colName.svg"
+    replot
+    #plot for [file in filepaths] file using 1:$colNum with lines smooth unique title file noenhanced
+    #plot "$file1" using 1:$colNum with lines smooth unique title "$file1" noenhanced, \
+    #     "$file2" using 1:$colNum with lines smooth unique title "$file2" noenhanced
+EOF
+}
+
+# Read in the column names
+IFS=$'\t' read -r -a columnsArray < <(head -n 1  "${filepaths[0]}")
+
+# Display column choices and read in user response
+echo "Which benchmarks would you like to plot?"
+n=1
+for col in "${columnsArray[@]:1}";
+do
+  echo "  $n: $col";
+  n=$((n+1))
+done
+echo "  $n: All of the above";
+printf "Please choose one of the above [All] "
+read resp
+
+# Parse user response and create plots
+if [[ "$resp" == "" || "$resp" == $n ]]; then
+  colNum=1
+  for colName in "${columnsArray[@]:1}";
+  do
+    colNum=$((colNum+1))
+    create_plots "$colNum" "$colName"
+  done
+  printf "\nCharts written to: $chartsdir"
+elif [[ "$resp" -gt 0 && "$resp" -lt $n ]]; then
+  colNum="$resp"
+  colName=${columnsArray[$colNum]}
+  create_plots "$colNum" "$colName"
+  printf "\nCharts written to: $chartsdir\n"
+fi
