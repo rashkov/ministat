@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-testdir="$(dirname $(readlink -f $0))"
+testdir=$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd -P)
 gendir="$testdir/data_gen"
 datadir="$testdir/input_data"
 
