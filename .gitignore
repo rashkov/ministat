@@ -1,5 +1,5 @@
 ministat
 *.o
 *.core
-chameleon
-iguana
+test/input_data
+test/out
