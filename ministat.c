@@ -131,17 +131,16 @@ double student [NSTUDENT + 1][NCONF] = {
 static char symbol[MAX_DS] = { ' ', 'x', '+', '*', '%', '#', '@', 'O' };
 struct timespec begin, end, q_begin, q_end, stk_begin, stk_end, str_begin, str_end;
 
-static unsigned long long int timing[]= {0,0,0,0,0};
-static unsigned long long int iterations[]= {0,0,0,0,0};
+static unsigned long long int timing[]= {0,0,0,0};
+static unsigned long long int iterations[]= {0,0,0,0};
 
 
 static unsigned long long
 elapsed_us(struct timespec *a, struct timespec *b)
 {
-        unsigned long long a_p = (a->tv_sec * 1000000ULL) + a->tv_nsec / 1000;
-        unsigned long long b_p = (b->tv_sec * 1000000ULL) + b->tv_nsec / 1000;
-
-        return b_p - a_p;
+	unsigned long long a_p = (a->tv_sec * 1000000ULL) + a->tv_nsec / 1000;
+	unsigned long long b_p = (b->tv_sec * 1000000ULL) + b->tv_nsec / 1000;
+	return b_p - a_p;
 }
 
 struct dataset {
@@ -664,8 +663,10 @@ main(int argc, char **argv)
 	timing[3] = elapsed_us(&begin, &end);
 	iterations[3] += 1;
 
-	for (i = 0; i < nds; i++) 
-		printf("%c %s\n", symbol[i+1], ds[i]->name);
+	if(!flag_v){
+		for (i = 0; i < nds; i++)
+			printf("%c %s\n", symbol[i+1], ds[i]->name);
+	}
 
 	if (!flag_n && !flag_q) {
 		SetupPlot(termwidth, flag_s, nds);
@@ -675,25 +676,32 @@ main(int argc, char **argv)
 			PlotSet(ds[i], i + 1);
 		DumpPlot();
 	}
-	VitalsHead();
-	Vitals(ds[0], 1);
+	if(!flag_v){
+		VitalsHead();
+		Vitals(ds[0], 1);
+	}
 
 	
-	for (i = 1; i < nds; i++) {
-		Vitals(ds[i], i + 1);
-		if (!flag_n)
-			Relative(ds[i], ds[0], ci);
+	if(!flag_v){
+		for (i = 1; i < nds; i++) {
+			Vitals(ds[i], i + 1);
+			if (!flag_n)
+				Relative(ds[i], ds[0], ci);
+		}
 	}
 	
 
 	if (flag_v){
-		printf("Time spent using strtok function: %f seconds.\n", (float)timing[0]/iterations[0]);
-		printf("Time spent using strtod function: %f seconds.\n", (float)timing[1]/iterations[1]);
-		printf("Time spent using sorting function: %f seconds.\n", (float)timing[2]/iterations[2]);
-		printf("Time spent using ReadSet: %f seconds. \n", (float)timing[3]/iterations[3]);
+		printf("num_datapoints\tstrtok_avg (us)\tstrtod_avg (us)\tqsort (us)\tReadSet (us)\n");
+		printf("%llu\t%f\t%f\t%f\t%f\n",
+			iterations[1],
+			((double) timing[0]) / iterations[0],
+			((double) timing[1]) / iterations[1],
+			((double) timing[2]) / iterations[2],
+			((double) timing[3]) / iterations[3]
+		);
 	}
 
-   	
 
 	exit(0);
 	
