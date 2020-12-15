@@ -2,5 +2,4 @@ ministat
 *.o
 *.core
 test/input_data
-test/executables
 test/out
