@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 testdir=$(dirname $(readlink -f $0))
 exesdir="$testdir/executables"
 datadir="$testdir/input_data"
 outdir="$testdir/out"
 chartsdir="$outdir/charts"
 tablesdir="$outdir/tables"
+
+(source "$testdir/gen_data.sh")
 
 if [ -d "$tablesdir" ]
 then
@@ -52,6 +56,9 @@ create_plots () {
   colNum="$1"
   colName="$2"
   gnuplot -p <<- EOF
+    set term svg
+    set output "$chartsdir/$colName.svg"
+
     set datafile separator '\t'
     set ylabel "log($colName)" noenhanced # label for the Y axis
     set xlabel 'log(num_points)' noenhanced # label for the X axis
@@ -61,13 +68,6 @@ create_plots () {
     filepaths = "${filepaths[@]}"
     filenames = "${filenames[@]}"
     plot for [i=1:words(filepaths)] word(filepaths,i) using 1:$colNum with lines smooth unique title word(filenames,i) noenhanced
-
-    set term svg
-    set output "$chartsdir/$colName.svg"
-    replot
-    #plot for [file in filepaths] file using 1:$colNum with lines smooth unique title file noenhanced
-    #plot "$file1" using 1:$colNum with lines smooth unique title "$file1" noenhanced, \
-    #     "$file2" using 1:$colNum with lines smooth unique title "$file2" noenhanced
 EOF
 }
 

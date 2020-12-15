@@ -7,16 +7,17 @@ datadir="$testdir/input_data"
 
 cd "$gendir" && make >/dev/null
 
-if [ -d "$datadir" ]
-then
-  printf "Delete existing data in $datadir? [y/n] "
-  read resp
-  if [ $resp == "y" ]
-  then
-    rm -r "$datadir"
-  else
-    exit
-  fi
+# Check if data dir is already populated with files
+if [[ -d "$datadir" && $(find $datadir -type f | wc -l) -gt 0 ]]; then
+  exit;
+  #printf "Delete existing data in $datadir? [y/n] "
+  #read resp
+  #if [ $resp == "y" ]
+  #then
+  #  rm -r "$datadir"
+  #else
+  #  exit
+  #fi
 fi
 mkdir -p "${datadir}"
 
