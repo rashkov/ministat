@@ -98,6 +98,7 @@ if [[ "$resp" == "" || "$resp" == $n ]]; then
 elif [[ "$resp" -gt 0 && "$resp" -lt $n ]]; then
   colNum="$resp"
   colName=${columnsArray[$colNum]}
+  colNum=$((colNum+1))
   create_plots "$colNum" "$colName"
   printf "\nCharts written to: $chartsdir\n"
 fi
