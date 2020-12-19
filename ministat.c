@@ -19,6 +19,14 @@
 #include <pthread.h>
 #include "queue.h"
 
+static int dbl_cmp(const void *a, const void *b);
+
+#define AN_QSORT_SUFFIX doubles
+#define AN_QSORT_TYPE double
+#define AN_QSORT_CMP dbl_cmp
+
+#include "an_qsort.c"
+
 #define NSTUDENT 100
 #define NCONF 6
 double const studentpct[] = { 80, 90, 95, 98, 99, 99.5 };
@@ -553,7 +561,7 @@ ReadSet(void* arg)
 	}
 
 	clock_gettime(CLOCK_MONOTONIC, &q_begin);
-	qsort(s->points, s->n, sizeof *s->points, dbl_cmp);
+	an_qsort_doubles(s->points, s->n);
 	clock_gettime(CLOCK_MONOTONIC, &q_end);
 
 	timing[2] += elapsed_us(&q_begin, &q_end);
