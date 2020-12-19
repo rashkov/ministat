@@ -16,6 +16,9 @@
 #include <string.h>
 #include <unistd.h>
 #include "dtoa/strtod-fast.c"
+#include <time.h>
+
+
 #include "queue.h"
 #define NSTUDENT 100
 #define NCONF 6
@@ -125,7 +128,21 @@ double student [NSTUDENT + 1][NCONF] = {
 };
 
 #define	MAX_DS	8
+
 static char symbol[MAX_DS] = { ' ', 'x', '+', '*', '%', '#', '@', 'O' };
+struct timespec begin, end, q_begin, q_end, stk_begin, stk_end, str_begin, str_end;
+
+static unsigned long long int timing[]= {0,0,0,0};
+static unsigned long long int iterations[]= {0,0,0,0};
+
+
+static unsigned long long
+elapsed_us(struct timespec *a, struct timespec *b)
+{
+	unsigned long long a_p = (a->tv_sec * 1000000ULL) + a->tv_nsec / 1000;
+	unsigned long long b_p = (b->tv_sec * 1000000ULL) + b->tv_nsec / 1000;
+	return b_p - a_p;
+}
 
 struct dataset {
 	char *name;
@@ -153,10 +170,11 @@ AddPoint(struct dataset *ds, double a)
 
 	if (ds->n >= ds->lpoints) {
 		dp = ds->points;
-		ds->lpoints *= 4;
+		ds->lpoints *= 4;	
 		ds->points = calloc(sizeof *ds->points, ds->lpoints);
 		memcpy(ds->points, dp, sizeof *dp * ds->n);
 		free(dp);
+		
 	}
 	ds->points[ds->n++] = a;
 	ds->sy += a;
@@ -473,28 +491,48 @@ ReadSet(const char *n, int column, const char *delim)
 		i = strlen(buf);
 		if (buf[i-1] == '\n')
 			buf[i-1] = '\0';
-		for (i = 1, t = strtok(buf, delim);
-		     t != NULL && *t != '#';
-		     i++, t = strtok(NULL, delim)) {
+
+		
+		clock_gettime(CLOCK_MONOTONIC, &stk_begin);
+		for (i = 1, t = strtok(buf, delim); t != NULL && *t != '#'; i++, t = strtok(NULL, delim)) {
 			if (i == column)
 				break;
 		}
+		clock_gettime(CLOCK_MONOTONIC, &stk_end);
+		timing[0] += elapsed_us(&stk_begin, &stk_end);
+		iterations[0] += 1;
+		
+
 		if (t == NULL || *t == '#')
 			continue;
 
+
+		clock_gettime(CLOCK_MONOTONIC, &str_begin);
 		d = strtod_fast(t, &p);
+		clock_gettime(CLOCK_MONOTONIC, &str_end);
+		timing[1] += elapsed_us(&str_begin, &str_end);
+		iterations[1] += 1;
+	
+
 		if (p != NULL && *p != '\0')
 			err(2, "Invalid data on line %d in %s\n", line, n);
 		if (*buf != '\0')
 			AddPoint(s, d);
 	}
 	fclose(f);
+
 	if (s->n < 3) {
 		fprintf(stderr,
 		    "Dataset %s must contain at least 3 data points\n", n);
 		exit (2);
 	}
+
+	clock_gettime(CLOCK_MONOTONIC, &q_begin);
 	qsort(s->points, s->n, sizeof *s->points, dbl_cmp);
+	clock_gettime(CLOCK_MONOTONIC, &q_end);
+
+	timing[2] += elapsed_us(&q_begin, &q_end);
+	iterations[2] += 1;
 	return (s);
 }
 
@@ -535,8 +573,11 @@ main(int argc, char **argv)
 	int flag_s = 0;
 	int flag_n = 0;
 	int flag_q = 0;
+	int flag_v = 0;
 	int termwidth = 74;
 
+	
+	
 	if (isatty(STDOUT_FILENO)) {
 		struct winsize wsz;
 
@@ -546,9 +587,10 @@ main(int argc, char **argv)
 			 wsz.ws_col > 0)
 			termwidth = wsz.ws_col - 2;
 	}
+	
 
 	ci = -1;
-	while ((c = getopt(argc, argv, "C:c:d:snqw:")) != -1)
+	while ((c = getopt(argc, argv, "C:c:d:snvqw:")) != -1)
 		switch (c) {
 		case 'C':
 			column = strtol(optarg, &p, 10);
@@ -588,6 +630,9 @@ main(int argc, char **argv)
 			if (termwidth < 0)
 				usage("Unable to move beyond left margin.");
 			break;
+		case 'v':
+			flag_v = 1;
+			break;
 		default:
 			usage("Unknown option");
 			break;
@@ -597,19 +642,29 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
+
+	
 	if (argc == 0) {
+		clock_gettime(CLOCK_MONOTONIC, &begin);
 		ds[0] = ReadSet("-", column, delim);
+		clock_gettime(CLOCK_MONOTONIC, &end);
 		nds = 1;
 	} else {
 		if (argc > (MAX_DS - 1))
 			usage("Too many datasets.");
 		nds = argc;
+		clock_gettime(CLOCK_MONOTONIC, &begin);
 		for (i = 0; i < nds; i++)
 			ds[i] = ReadSet(argv[i], column, delim);
+		clock_gettime(CLOCK_MONOTONIC, &end);
 	}
+	timing[3] = elapsed_us(&begin, &end);
+	iterations[3] += 1;
 
-	for (i = 0; i < nds; i++) 
-		printf("%c %s\n", symbol[i+1], ds[i]->name);
+	if(!flag_v){
+		for (i = 0; i < nds; i++)
+			printf("%c %s\n", symbol[i+1], ds[i]->name);
+	}
 
 	if (!flag_n && !flag_q) {
 		SetupPlot(termwidth, flag_s, nds);
@@ -619,12 +674,33 @@ main(int argc, char **argv)
 			PlotSet(ds[i], i + 1);
 		DumpPlot();
 	}
-	VitalsHead();
-	Vitals(ds[0], 1);
-	for (i = 1; i < nds; i++) {
-		Vitals(ds[i], i + 1);
-		if (!flag_n)
-			Relative(ds[i], ds[0], ci);
+	if(!flag_v){
+		VitalsHead();
+		Vitals(ds[0], 1);
 	}
+
+	
+	if(!flag_v){
+		for (i = 1; i < nds; i++) {
+			Vitals(ds[i], i + 1);
+			if (!flag_n)
+				Relative(ds[i], ds[0], ci);
+		}
+	}
+	
+
+	if (flag_v){
+		printf("num_datapoints\tstrtok_avg (us)\tstrtod_avg (us)\tqsort (us)\tReadSet (us)\n");
+		printf("%llu\t%f\t%f\t%f\t%f\n",
+			iterations[1],
+			((double) timing[0]) / iterations[0],
+			((double) timing[1]) / iterations[1],
+			((double) timing[2]) / iterations[2],
+			((double) timing[3]) / iterations[3]
+		);
+	}
+
+
 	exit(0);
+	
 }
