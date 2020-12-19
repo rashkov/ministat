@@ -165,19 +165,22 @@ NewSet(void)
 static void
 AddPoint(struct dataset *ds, double a)
 {
-	double *dp;
+    double *dp;
 
-	if (ds->n >= ds->lpoints) {
-		dp = ds->points;
-		ds->lpoints *= 4;	
-		ds->points = calloc(sizeof *ds->points, ds->lpoints);
-		memcpy(ds->points, dp, sizeof *dp * ds->n);
-		free(dp);
-		
-	}
-	ds->points[ds->n++] = a;
-	ds->sy += a;
-	ds->syy += a * a;
+    if (ds->n >= ds->lpoints) {
+        ds->lpoints *= 4;   
+        dp = realloc(ds->points, (sizeof *ds->points * ds->lpoints));
+        if (dp == NULL){
+            //error statement?
+            exit(0);
+        }
+        else{
+            ds->points = dp;
+        }
+    }
+    ds->points[ds->n++] = a;
+    ds->sy += a;
+    ds->syy += a * a;
 }
 
 static double
