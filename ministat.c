@@ -16,7 +16,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
-
+#include <pthread.h>
 #include "queue.h"
 
 #define NSTUDENT 100
@@ -130,9 +130,22 @@ double student [NSTUDENT + 1][NCONF] = {
 
 static char symbol[MAX_DS] = { ' ', 'x', '+', '*', '%', '#', '@', 'O' };
 struct timespec begin, end, q_begin, q_end, stk_begin, stk_end, str_begin, str_end;
+struct rs_arg {
+	const char *file;
+	int col;
+	const char *del;
+	struct dataset *s; 
+} *RS;
 
-static unsigned long long int timing[]= {0,0,0,0};
-static unsigned long long int iterations[]= {0,0,0,0};
+static unsigned long long int timing[]= {0,0,0,0,0};
+static unsigned long long int iterations[]= {0,0,0,0,0};
+
+
+//Arguements of ReadSet are
+// const char *n, int column, const char *delim
+// n = file
+// column = ??
+// delim = chosen deliminator
 
 
 static unsigned long long
@@ -463,16 +476,23 @@ dbl_cmp(const void *a, const void *b)
 		return (0);
 }
 
-static struct dataset *
-ReadSet(const char *n, int column, const char *delim)
+void *
+ReadSet(void* arg)
+//const char *n, int column, const char *delim
 {
+	
 	FILE *f;
 	char buf[BUFSIZ], *p, *t;
 	struct dataset *s;
 	double d;
 	int line;
 	int i;
-
+	//Set the argument to the values in the function
+	struct rs_arg *rs = (struct rs_arg *) arg;
+	const char *n = rs->file;
+	int column = rs->col;
+	const char *delim = rs->del;
+	
 	if (n == NULL) {
 		f = stdin;
 		n = "<stdin>";
@@ -487,6 +507,7 @@ ReadSet(const char *n, int column, const char *delim)
 	s = NewSet();
 	s->name = strdup(n);
 	line = 0;
+	//clock_gettime(CLOCK_MONOTONIC, &str_begin);
 	while (fgets(buf, sizeof buf, f) != NULL) {
 		line++;
 
@@ -508,19 +529,21 @@ ReadSet(const char *n, int column, const char *delim)
 		if (t == NULL || *t == '#')
 			continue;
 
-
+		//timing
 		clock_gettime(CLOCK_MONOTONIC, &str_begin);
 		d = strtod(t, &p);
 		clock_gettime(CLOCK_MONOTONIC, &str_end);
 		timing[1] += elapsed_us(&str_begin, &str_end);
 		iterations[1] += 1;
-	
+		//timing
 
 		if (p != NULL && *p != '\0')
 			err(2, "Invalid data on line %d in %s\n", line, n);
 		if (*buf != '\0')
 			AddPoint(s, d);
 	}
+	//clock_gettime(CLOCK_MONOTONIC, &str_end);
+	
 	fclose(f);
 
 	if (s->n < 3) {
@@ -535,7 +558,9 @@ ReadSet(const char *n, int column, const char *delim)
 
 	timing[2] += elapsed_us(&q_begin, &q_end);
 	iterations[2] += 1;
-	return (s);
+	//return (s); // set s to rs->s = s;
+	rs -> s = s; // don't think this works
+	return NULL;
 }
 
 static void
@@ -644,20 +669,36 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
+	pthread_t tid[argc];
 
-	
 	if (argc == 0) {
 		clock_gettime(CLOCK_MONOTONIC, &begin);
-		ds[0] = ReadSet("-", column, delim);
+		RS->file = "-";
+		RS->col = column;
+		RS->del = delim;
+		pthread_create(&tid[0], NULL, ReadSet, (void*)RS);
+		pthread_join(tid[0],NULL);
+		ds[0] = RS->s;
 		clock_gettime(CLOCK_MONOTONIC, &end);
 		nds = 1;
 	} else {
 		if (argc > (MAX_DS - 1))
 			usage("Too many datasets.");
 		nds = argc;
+
 		clock_gettime(CLOCK_MONOTONIC, &begin);
-		for (i = 0; i < nds; i++)
-			ds[i] = ReadSet(argv[i], column, delim);
+		struct rs_arg RS[argc];
+		for (i = 0; i < nds; i++){
+			RS[i].file = argv[i];
+			RS[i].col = column;
+			RS[i].del = delim;
+			pthread_create(&tid[i], NULL, &ReadSet, (void*)&RS[i]);
+		}
+		for (i = 0; i < nds; i++){
+			pthread_join(tid[i],NULL);
+			ds[i] = RS[i].s;
+		}
+
 		clock_gettime(CLOCK_MONOTONIC, &end);
 	}
 	timing[3] = elapsed_us(&begin, &end);
