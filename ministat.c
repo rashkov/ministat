@@ -448,100 +448,100 @@ dbl_cmp(const void *a, const void *b)
 }
 
 static struct dataset *
-ReadSet(const char *n, int column, const char *delim)
-{
-	int fd = -1;
-	char buf[2], *p, *t;
-	struct dataset *s;
-	double d;
-	int line;
-	int i;
-	char *current;
-	if (n == NULL) {
-		fd = fileno (stdin);
-		n = "<stdin>";
-	} else if (!strcmp(n, "-")) {
-		fd = fileno(stdin);
-		n = "<stdin>";
-	} else {
-		fd = open(n, O_RDONLY);
-	}
-	if (fd == -1)
-		err(1, "Cannot open %s", n);
-	s = NewSet();
-	s->name = strdup(n);
-	line = 0;
-	char * found;
-	char *tmp= NULL;
-	while (read(fd, buf, sizeof buf) != 0) {
-		line++;	
-		tmp=buf;
-	        current = (char *) malloc(strlen(tmp));
-		strcpy(current,tmp);	
-		while((found = strsep(&tmp, "\n")) != NULL && tmp!= NULL){		 
-    		current = (char *) malloc(strlen(tmp));
-     		strcpy(current,tmp);
-		i=strlen(found);
-		if (buf[i-1] == '\n')
-			buf[i-1] = '\0';
-		for (i = 1, t = strsep(&found, delim);
-		     t != NULL && *t != '#';
-		     i++, t = strsep(&found, delim)) {
-			if (i == column)break;
+	ReadSet(const char *n, int column, const char *delim)
+	{
+		int fd = -1;
+		char buf[2], *p, *t;
+		struct dataset *s;
+		double d;
+		int line;
+		int i;
+		char *lo_line;
+		if (n == NULL) {
+			fd = fileno (stdin);
+			n = "<stdin>";
+		} else if (!strcmp(n, "-")) {
+			fd = fileno(stdin);
+			n = "<stdin>";
+		} else {
+			fd = open(n, O_RDONLY);
 		}
-		if (t == NULL || *t == '#')
-		continue;
- 	
-		d = strtod(t, &p);
-		if (p != NULL && *p != '\0')
-			err(2, "Invalid data on line %d in %s\n", line, n);
-		if (*buf != '\0') AddPoint(s, d);
+		if (fd == -1)
+			err(1, "Cannot open %s", n);
+		s = NewSet();
+		s->name = strdup(n);
+		line = 0;
+		char * found;
+		char *tmp= NULL;
+		while (read(fd, buf, sizeof buf) != 0) {
+			line++;	
+			tmp=buf;
+			lo_line = (char *) malloc(strlen(tmp));
+			strcpy(lo_line,tmp);	
+			while((found = strsep(&tmp, "\n")) != NULL && tmp!= NULL){		 
+				lo_line = (char *) malloc(strlen(tmp));
+				strcpy(lo_line,tmp);
+				i=strlen(found);
+				if (buf[i-1] == '\n')
+					buf[i-1] = '\0';
+				for (i = 1, t = strsep(&found, delim);
+					t != NULL && *t != '#';
+					i++, t = strsep(&found, delim)) {
+					if (i == column)break;
+			}
+			if (t == NULL || *t == '#')
+				continue;
+			
+			d = strtod(t, &p);
+			if (p != NULL && *p != '\0')
+				err(2, "Invalid data on line %d in %s\n", line, n);
+			if (*buf != '\0') AddPoint(s, d);
 		}
-      char *e;
-      e = strchr(current, '\n');
-      size_t bytes_to_read=0;
-      size_t go_back=0;
-      size_t bytes_read=0;
-      memset(buf,'\0',(sizeof buf));
+		char *e;
+		e = strchr(lo_line, '\n');
+		size_t bytes_to_read=0;
+		size_t go_back=0;
+		size_t bytes_read=0;
+		memset(buf,'\0',(sizeof buf));
       while(e==NULL){//reading until we finish the current line
           if(!(bytes_read=read(fd, buf, sizeof buf))) break;//if we hit the end of the file
           go_back+=bytes_read;
           e = strchr(buf, '\n');
           if(e==NULL){ bytes_to_read+=sizeof buf;}
           else {
-              bytes_to_read+=(int)(e - buf);
-              break;
+          	bytes_to_read+=(int)(e - buf);
+          	break;
           }
       }
-          if(bytes_to_read >= sizeof buf){
-          current = (char *) realloc(current,bytes_to_read+sizeof buf);
-          lseek(fd,0-(go_back),SEEK_CUR);
-          read(fd,current+strlen(current), bytes_to_read+1);
+      if(bytes_to_read >= sizeof buf){
+      	lo_line = (char *) realloc(lo_line,bytes_to_read+sizeof buf);
+      	lseek(fd,0-(go_back),SEEK_CUR);
+      	read(fd,lo_line+strlen(lo_line), bytes_to_read+1);
       }
       else{ lseek(fd,0-(go_back),SEEK_CUR);
          memset(buf  ,'\0',(sizeof buf));//clearing buffer
           read(fd,buf, bytes_to_read+1);//reading left over,plus one for new line
-          strcat(current,buf);//combining the left over
+          strcat(lo_line,buf);//combining the left over
       }
-      	if ((found = strsep(&current, "\n")) != NULL){
-	 i=strlen(found);
-                if (buf[i-1] == '\n')
-                        buf[i-1] = '\0';
-                for (i = 1, t = strsep(&found, delim);
-                     t != NULL && *t != '#';
-                     i++, t = strsep(&found, delim)) {
-                        if (i == column)break;
-                }
-                if (t == NULL || *t == '#')
-                        continue;
-	
-                d = strtod(t, &p);
-                if (p != NULL && *p != '\0')
-                        err(2, "Invalid data on line %d in %s\n", line, n);
-                if (*buf != '\0') AddPoint(s, d);
-		}
-	}
-       	close(fd);
+      if ((found = strsep(&lo_line, "\n")) != NULL){
+      	i=strlen(found);
+      	if (buf[i-1] == '\n')
+      		buf[i-1] = '\0';
+      	for (i = 1, t = strsep(&found, delim);
+      		t != NULL && *t != '#';
+      		i++, t = strsep(&found, delim)) {
+      		if (i == column)break;
+      }
+      if (t == NULL || *t == '#')
+      	continue;
+      
+      d = strtod(t, &p);
+      if (p != NULL && *p != '\0')
+      	err(2, "Invalid data on line %d in %s\n", line, n);
+      if (*buf != '\0') AddPoint(s, d);
+  }
+}
+close(fd);
 	if (s->n < 3) {
 		fprintf(stderr,
 		    "Dataset %s must contain at least 3 data points\n", n);
