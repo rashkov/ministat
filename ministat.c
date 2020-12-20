@@ -17,6 +17,11 @@
 #include <unistd.h>
 #include <time.h>
 
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <ctype.h>
+
 #include "queue.h"
 
 #define NSTUDENT 100
@@ -463,62 +468,124 @@ dbl_cmp(const void *a, const void *b)
 static struct dataset *
 ReadSet(const char *n, int column, const char *delim)
 {
-	FILE *f;
-	char buf[BUFSIZ], *p, *t;
+  int fd;
+	char *p, *t;
 	struct dataset *s;
 	double d;
 	int line;
-	int i;
 
 	if (n == NULL) {
-		f = stdin;
+    fd = 1;
 		n = "<stdin>";
 	} else if (!strcmp(n, "-")) {
-		f = stdin;
+    fd = 1;
 		n = "<stdin>";
 	} else {
-		f = fopen(n, "r");
+    fd = open(n, O_RDONLY);
 	}
-	if (f == NULL)
+	if (fd == -1)
 		err(1, "Cannot open %s", n);
 	s = NewSet();
 	s->name = strdup(n);
 	line = 0;
-	while (fgets(buf, sizeof buf, f) != NULL) {
-		line++;
-
-		i = strlen(buf);
-		if (buf[i-1] == '\n')
-			buf[i-1] = '\0';
-
-		
-		clock_gettime(CLOCK_MONOTONIC, &stk_begin);
-		for (i = 1, t = strtok(buf, delim); t != NULL && *t != '#'; i++, t = strtok(NULL, delim)) {
-			if (i == column)
-				break;
-		}
-		clock_gettime(CLOCK_MONOTONIC, &stk_end);
-		timing[0] += elapsed_us(&stk_begin, &stk_end);
-		iterations[0] += 1;
-		
-
-		if (t == NULL || *t == '#')
-			continue;
 
 
-		clock_gettime(CLOCK_MONOTONIC, &str_begin);
-		d = strtod(t, &p);
-		clock_gettime(CLOCK_MONOTONIC, &str_end);
-		timing[1] += elapsed_us(&str_begin, &str_end);
-		iterations[1] += 1;
-	
 
-		if (p != NULL && *p != '\0')
-			err(2, "Invalid data on line %d in %s\n", line, n);
-		if (*buf != '\0')
-			AddPoint(s, d);
-	}
-	fclose(f);
+  int const C = 32768;
+  int const BUFSIZE = 2 * C;
+  char * buf = malloc(BUFSIZE);
+  int count;
+  char * str;
+  char * nl;
+  char * last_nl;
+  char * cursor;
+  int start = 0;
+  int i;
+  while(1){
+    // Keep reading until we encounter a newline in a newly read chunk
+    while(start + C <= BUFSIZE &&
+         (count = read(fd, buf + start, C)) > 0 &&
+          memchr(buf + start, '\n', count) == NULL){
+      start += count;
+    }
+    if(count == 0 || count == -1){
+      if(count == -1){
+        perror(NULL);
+        exit(errno);
+      }
+      //return 0;
+      break;
+    }
+    // We may have gotten multiple newlines in a single read()
+    // Iterate through them to grab each complete newline-terminated string
+    str = buf;
+    last_nl = NULL;
+    while((nl = memchr(str, '\n', start + count)) != NULL){
+      // newline found and nl points to it
+      // replace nl with '\0' to terminate our newly found string
+      // buf now contains a complete string, which is what we wanted
+      *nl = '\0';
+
+      //printf("full line: %s\n", str);
+      line++;
+
+      i = strlen(str);
+      if (str[i-1] == '\n')
+        str[i-1] = '\0';
+
+      
+      clock_gettime(CLOCK_MONOTONIC, &stk_begin);
+      for (i = 1, t = strtok(str, delim); t != NULL && *t != '#'; i++, t = strtok(NULL, delim)) {
+        if (i == column)
+          break;
+      }
+      clock_gettime(CLOCK_MONOTONIC, &stk_end);
+      timing[0] += elapsed_us(&stk_begin, &stk_end);
+      iterations[0] += 1;
+      
+
+      if (t == NULL || *t == '#')
+        continue;
+
+
+      clock_gettime(CLOCK_MONOTONIC, &str_begin);
+      d = strtod(t, &p);
+      clock_gettime(CLOCK_MONOTONIC, &str_end);
+      timing[1] += elapsed_us(&str_begin, &str_end);
+      iterations[1] += 1;
+    
+
+      if (p != NULL && *p != '\0')
+        err(2, "Invalid data on line %d in %s\n", line, n);
+      if (*str != '\0')
+        AddPoint(s, d);
+
+
+      str = nl + 1; // look for more strings just past this newline
+      // save the last known location of a newline, so we can deal with
+      // the remainder / line fragment
+      last_nl = nl;
+    }
+    if(last_nl == NULL) continue;
+    // * deal with the line fragment *
+    // skip any white-space at the front of fragment
+    cursor = last_nl + 1;
+    while(cursor <= buf + start + count - 1 && isspace(*cursor)) cursor++;
+    // copy fragment to the front of the buffer
+    i = 0;
+    while(cursor <= buf + start + count - 1){
+      buf[i] = *cursor;
+      i++;
+      cursor++;
+    }
+    // clear anything after the fragment
+    cursor = buf + i;
+    for(; cursor <= buf + start + count - 1; cursor++) *cursor = '\0';
+    // start = first free byte of buf. Use this for the next read()
+    start = i;
+  }
+  close(fd);
+
 
 	if (s->n < 3) {
 		fprintf(stderr,
