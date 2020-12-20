@@ -135,6 +135,7 @@ struct timespec begin, end, q_begin, q_end, stk_begin, stk_end, str_begin, str_e
 static unsigned long long int timing[]= {0,0,0,0};
 static unsigned long long int iterations[]= {0,0,0,0};
 
+unsigned long long int num_datapoints = 0;
 
 static unsigned long long
 elapsed_us(struct timespec *a, struct timespec *b)
@@ -493,25 +494,26 @@ ReadSet(const char *n, int column, const char *delim)
 			buf[i-1] = '\0';
 
 		
-		clock_gettime(CLOCK_MONOTONIC, &stk_begin);
+		//clock_gettime(CLOCK_MONOTONIC, &stk_begin);
 		for (i = 1, t = strtok(buf, delim); t != NULL && *t != '#'; i++, t = strtok(NULL, delim)) {
 			if (i == column)
 				break;
 		}
-		clock_gettime(CLOCK_MONOTONIC, &stk_end);
-		timing[0] += elapsed_us(&stk_begin, &stk_end);
-		iterations[0] += 1;
+		//clock_gettime(CLOCK_MONOTONIC, &stk_end);
+		//timing[0] += elapsed_us(&stk_begin, &stk_end);
+		//iterations[0] += 1;
 		
 
 		if (t == NULL || *t == '#')
 			continue;
 
 
-		clock_gettime(CLOCK_MONOTONIC, &str_begin);
+		//clock_gettime(CLOCK_MONOTONIC, &str_begin);
 		d = strtod_fast(t, &p);
-		clock_gettime(CLOCK_MONOTONIC, &str_end);
-		timing[1] += elapsed_us(&str_begin, &str_end);
-		iterations[1] += 1;
+		//clock_gettime(CLOCK_MONOTONIC, &str_end);
+		//timing[1] += elapsed_us(&str_begin, &str_end);
+		//iterations[1] += 1;
+    num_datapoints += 1;
 	
 
 		if (p != NULL && *p != '\0')
@@ -690,11 +692,9 @@ main(int argc, char **argv)
 	
 
 	if (flag_v){
-		printf("num_datapoints\tstrtok_avg (us)\tstrtod_avg (us)\tqsort (us)\tReadSet (us)\n");
+		printf("num_datapoints\tqsort (us)\tReadSet (us)\n");
 		printf("%llu\t%f\t%f\t%f\t%f\n",
-			iterations[1],
-			((double) timing[0]) / iterations[0],
-			((double) timing[1]) / iterations[1],
+			num_datapoints,
 			((double) timing[2]) / iterations[2],
 			((double) timing[3]) / iterations[3]
 		);
