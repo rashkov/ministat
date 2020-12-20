@@ -36,6 +36,22 @@
  * of the authors and should not be interpreted as representing official policies,
  * either expressed or implied, of the FreeBSD Project.
  */
+#ifndef max
+#define max(a, b)					\
+	({						\
+		__typeof__(a) _a = (a);			\
+		__typeof__(b) _b = (b);			\
+		_a > _b ? _a : _b;			\
+	})
+#endif
+#ifndef min
+#define min(a, b)					\
+	({						\
+		__typeof__(a) _a = (a);			\
+		__typeof__(b) _b = (b);			\
+		_b > _a ? _a : _b;			\
+	})
+#endif
 
 #include <stddef.h>
 #include <string.h>
@@ -172,11 +188,11 @@ loop:
 		return;
 	}
 	pn = a + n;
-	r = fmin(pa - a, pb - pa);
+	r = min(pa - a, pb - pa);
 	if(r > 0) {
 		AN_QSORT_NAME_SUFFIX(an_qsort_swapfunc)(a, pb - r, r);
 	}
-	r = fmin(pd - pc, pn - pd - 1);
+	r = min(pd - pc, pn - pd - 1);
 	if(r > 0) {
 		AN_QSORT_NAME_SUFFIX(an_qsort_swapfunc)(pb, pn - r, r);
 	}
