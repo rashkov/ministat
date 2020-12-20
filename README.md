@@ -2,24 +2,31 @@
 A small tool to do the statistics legwork on benchmarks etc.
 
 
-
 # Goal
 Optimize the AddPoint function within ministat.c and make it so the realloc does not use calloc or memcpy.
 
 ## Problems:
 The current ministat way of adding additional space was inefficient as it makes large copies of the already existing array and doubling it. Memcpy is very taxing on the program so changing it to a realloc will resolve some of this. I had difficulty understanding how to change the calloc and memcpy into a simple realloc. To resolve it I read the man pages and did more examples using all three functions to understand how they truly worked.
 
+---
 
 ## Results
 There was a slight improvement in the code when changing.
 
-### Before
-# Perf 
+# Original Perf 
 ## Flamegraph
 Click on image below to get an interactive version
 ![Flamegraph](https://raw.githubusercontent.com/rashkov/ministat/master/perf-ministat.svg)
 
-### After
+# Perf After Optimization
+
+
+
+## Timing function
+
+
+
+## Conclusion
 
 ---
 
