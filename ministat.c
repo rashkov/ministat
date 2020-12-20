@@ -492,12 +492,12 @@ ReadSet(const char *n, int column, const char *delim)
 			buf[i-1] = '\0';
 
 		
-		//clock_gettime(CLOCK_MONOTONIC, &stk_begin);
+		clock_gettime(CLOCK_MONOTONIC, &stk_begin);
 		for (i = 1, t = strtok(buf, delim); t != NULL && *t != '#'; i++, t = strtok(NULL, delim)) {
 			if (i == column)
 				break;
 		}
-		//clock_gettime(CLOCK_MONOTONIC, &stk_end);
+		clock_gettime(CLOCK_MONOTONIC, &stk_end);
 		timing[0] += elapsed_us(&stk_begin, &stk_end);
 		iterations[0] += 1;
 		
@@ -505,9 +505,9 @@ ReadSet(const char *n, int column, const char *delim)
 		if (t == NULL || *t == '#')
 			continue;
 
-		//clock_gettime(CLOCK_MONOTONIC, &str_begin);
+		clock_gettime(CLOCK_MONOTONIC, &str_begin);
 		d = strtod(t, &p);
-		//clock_gettime(CLOCK_MONOTONIC, &str_end);
+		clock_gettime(CLOCK_MONOTONIC, &str_end);
 		timing[1] += elapsed_us(&str_begin, &str_end);
 		iterations[1] += 1;
 	
