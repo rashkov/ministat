@@ -544,11 +544,11 @@ static struct dataset *
       if(bytes_to_read >= sizeof buf){
       	lo_line = (char *) realloc(lo_line,bytes_to_read+sizeof buf);
       	lseek(fd,0-(go_back),SEEK_CUR);
-      	read(fd,lo_line+strlen(lo_line), bytes_to_read+1);
+     	if((read(fd,lo_line+strlen(lo_line), bytes_to_read+1)) == -1) break;
       }
       else{ lseek(fd,0-(go_back),SEEK_CUR);
-         memset(buf  ,'\0',(sizeof buf));//clearing buffer
-          read(fd,buf, bytes_to_read+1);//reading left over,plus one for new line
+          memset(buf  ,'\0',(sizeof buf));//clearing buffer
+         if((read(fd,buf, bytes_to_read+1)) == -1 )break;//reading left over,plus one for new line
           strcat(lo_line,buf);//combining the left over
       }
       if ((found = strsep(&lo_line, "\n")) != NULL){
