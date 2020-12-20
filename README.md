@@ -1,13 +1,30 @@
 # ministat
 A small tool to do the statistics legwork on benchmarks etc.
 
-# Perf 
+---
+
+# Goal
+Allow ministat to read the files in threading.
+
+## Problems
+Currently RS uses one thread to read the files. I made it so multiple files could be read in parrallel. I had difficulty threading the RS function because I did not know how to pass the fucntion with multiple arguments. I found a way by researching how to use structs in the pthread_create function.
+
+## Results
+There was a significant improvement to the code when allowing for parrallel reading.
+
+# Perf Before
 ## Flamegraph
 Click on image below to get an interactive version
 ![Flamegraph](https://raw.githubusercontent.com/rashkov/ministat/master/perf-ministat.svg)
 
-## Build & Install
 
+### After
+
+
+
+---
+
+## Build & Install
 There should be no dependencies besides the standard libraries and a functional tool-chain.
 
 	$ cd ministat/
