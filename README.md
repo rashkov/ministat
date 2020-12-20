@@ -1,10 +1,7 @@
 # ministat
 A small tool to do the statistics legwork on benchmarks etc.
 
-# Perf 
-## Flamegraph
-Click on image below to get an interactive version
-![Flamegraph](https://raw.githubusercontent.com/rashkov/ministat/master/perf-ministat.svg)
+
 
 # Goal
 Optimize the AddPoint function within ministat.c and make it so the realloc does not use calloc or memcpy.
@@ -17,7 +14,10 @@ The current ministat way of adding additional space was inefficient as it makes 
 There was a slight improvement in the code when changing.
 
 ### Before
-
+# Perf 
+## Flamegraph
+Click on image below to get an interactive version
+![Flamegraph](https://raw.githubusercontent.com/rashkov/ministat/master/perf-ministat.svg)
 
 ### After
 
