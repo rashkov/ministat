@@ -4,9 +4,9 @@ OBJS= ministat.o
 
 PKGS = 
 
-CFLAGS  += -g -Wall -Werror -ggdb -O2 -fno-builtin
+CFLAGS  += -g -Wall -Werror
 CPPFLAGS+= -I. -D_GNU_SOURCE
-LDFLAGS  += -lm -L./mapm -lmapm
+LDFLAGS += -lm
 
 PREFIX ?= /usr
 

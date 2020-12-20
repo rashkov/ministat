@@ -15,11 +15,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include "dtoa/strtod-fast.c"
 #include <time.h>
 
-
 #include "queue.h"
+
 #define NSTUDENT 100
 #define NCONF 6
 double const studentpct[] = { 80, 90, 95, 98, 99, 99.5 };
@@ -506,14 +505,12 @@ ReadSet(const char *n, int column, const char *delim)
 		if (t == NULL || *t == '#')
 			continue;
 
-
 		clock_gettime(CLOCK_MONOTONIC, &str_begin);
-		d = strtod_fast(t, &p);
+		d = strtod(t, &p);
 		clock_gettime(CLOCK_MONOTONIC, &str_end);
 		timing[1] += elapsed_us(&str_begin, &str_end);
 		iterations[1] += 1;
 	
-
 		if (p != NULL && *p != '\0')
 			err(2, "Invalid data on line %d in %s\n", line, n);
 		if (*buf != '\0')
@@ -600,7 +597,7 @@ main(int argc, char **argv)
 				usage("Column number should be positive.");
 			break;
 		case 'c':
-			a = strtod_fast(optarg, &p);
+			a = strtod(optarg, &p);
 			if (p != NULL && *p != '\0')
 				usage("Not a floating point number");
 			for (i = 0; i < NCONF; i++)
