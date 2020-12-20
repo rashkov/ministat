@@ -131,8 +131,8 @@ double student [NSTUDENT + 1][NCONF] = {
 static char symbol[MAX_DS] = { ' ', 'x', '+', '*', '%', '#', '@', 'O' };
 struct timespec begin, end, q_begin, q_end, stk_begin, stk_end, str_begin, str_end;
 
-static unsigned long long int timing[]= {0,0,0,0};
-static unsigned long long int iterations[]= {0,0,0,0};
+static unsigned long long int timing[]= {1,1,0,0};
+static unsigned long long int iterations[]= {1,1,0,0};
 
 
 static unsigned long long
@@ -492,24 +492,24 @@ ReadSet(const char *n, int column, const char *delim)
 			buf[i-1] = '\0';
 
 		
-		clock_gettime(CLOCK_MONOTONIC, &stk_begin);
+		//clock_gettime(CLOCK_MONOTONIC, &stk_begin);
 		for (i = 1, t = strtok(buf, delim); t != NULL && *t != '#'; i++, t = strtok(NULL, delim)) {
 			if (i == column)
 				break;
 		}
-		clock_gettime(CLOCK_MONOTONIC, &stk_end);
-		timing[0] += elapsed_us(&stk_begin, &stk_end);
-		iterations[0] += 1;
+		//clock_gettime(CLOCK_MONOTONIC, &stk_end);
+		//timing[0] += elapsed_us(&stk_begin, &stk_end);
+		//iterations[0] += 1;
 		
 
 		if (t == NULL || *t == '#')
 			continue;
 
-		clock_gettime(CLOCK_MONOTONIC, &str_begin);
+		//clock_gettime(CLOCK_MONOTONIC, &str_begin);
 		d = strtod(t, &p);
-		clock_gettime(CLOCK_MONOTONIC, &str_end);
-		timing[1] += elapsed_us(&str_begin, &str_end);
-		iterations[1] += 1;
+		//clock_gettime(CLOCK_MONOTONIC, &str_end);
+		//timing[1] += elapsed_us(&str_begin, &str_end);
+		//iterations[1] += 1;
 	
 		if (p != NULL && *p != '\0')
 			err(2, "Invalid data on line %d in %s\n", line, n);
