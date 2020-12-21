@@ -19,6 +19,7 @@
 #include "dtoa/strtod-fast.c"
 
 #include "queue.h"
+
 #define NSTUDENT 100
 #define NCONF 6
 double const studentpct[] = { 80, 90, 95, 98, 99, 99.5 };
@@ -134,6 +135,7 @@ struct timespec begin, end, q_begin, q_end, stk_begin, stk_end, str_begin, str_e
 static unsigned long long int timing[]= {0,0};
 static unsigned long long int iterations[]= {0,0};
 
+unsigned long long int num_datapoints = 0;
 
 static unsigned long long
 elapsed_us(struct timespec *a, struct timespec *b)
@@ -500,8 +502,7 @@ ReadSet(const char *n, int column, const char *delim)
 		if (t == NULL || *t == '#')
 			continue;
 
-
-	
+    num_datapoints += 1;
 		d = strtod_fast(t, &p);
 
 		if (p != NULL && *p != '\0')
@@ -523,6 +524,7 @@ ReadSet(const char *n, int column, const char *delim)
 
 	timing[0] += elapsed_us(&q_begin, &q_end);
 	iterations[0] += 1;
+
 	return (s);
 }
 
@@ -590,7 +592,7 @@ main(int argc, char **argv)
 				usage("Column number should be positive.");
 			break;
 		case 'c':
-			a = strtod_fast(optarg, &p);
+			a = strtod(optarg, &p);
 			if (p != NULL && *p != '\0')
 				usage("Not a floating point number");
 			for (i = 0; i < NCONF; i++)
@@ -682,7 +684,7 @@ main(int argc, char **argv)
 	if (flag_v){
 		printf("num_datapoints\tqsort (us)\tReadSet (us)\n");
 		printf("%llu\t%f\t%f\n",
-			iterations[1],
+			num_datapoints,
 			((double) timing[0]) / iterations[0],
 			((double) timing[1]) / iterations[1]
 		);
