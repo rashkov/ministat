@@ -2,9 +2,13 @@
 A small tool to do the statistics legwork on benchmarks etc.
 
 # Perf 
-## Flamegraph
+## Flamegraph Before Optimization
 Click on image below to get an interactive version
 ![Flamegraph](https://raw.githubusercontent.com/rashkov/ministat/master/perf-ministat.svg)
+
+## Flamegraph After Optimization
+![Flamegraph](https://raw.githubusercontent.com/rashkov/ministat/final/perf-ministat.svg)
+
 
 ## Build & Install
 
