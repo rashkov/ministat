@@ -3,3 +3,4 @@ ministat
 *.core
 test/input_data
 test/out
+perf.data
