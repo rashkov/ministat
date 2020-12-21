@@ -17,6 +17,8 @@
 #include <unistd.h>
 #include <time.h>
 #include <pthread.h>
+#include "dtoa/strtod-fast.c"
+
 #include "queue.h"
 
 static int dbl_cmp(const void *a, const void *b);
@@ -145,16 +147,10 @@ struct rs_arg {
 	struct dataset *s; 
 } *RS;
 
-static unsigned long long int timing[]= {0,0,0,0,0};
-static unsigned long long int iterations[]= {0,0,0,0,0};
+static unsigned long long int timing[]= {0,0};
+static unsigned long long int iterations[]= {0,0};
 
-
-//Arguements of ReadSet are
-// const char *n, int column, const char *delim
-// n = file
-// column = ??
-// delim = chosen deliminator
-
+unsigned long long int num_datapoints = 0;
 
 static unsigned long long
 elapsed_us(struct timespec *a, struct timespec *b)
@@ -484,6 +480,11 @@ dbl_cmp(const void *a, const void *b)
 		return (0);
 }
 
+//Arguements of ReadSet are
+// const char *n, int column, const char *delim
+// n = file
+// column = ??
+// delim = chosen deliminator
 void *
 ReadSet(void* arg)
 //const char *n, int column, const char *delim
@@ -524,26 +525,16 @@ ReadSet(void* arg)
 			buf[i-1] = '\0';
 
 		
-		clock_gettime(CLOCK_MONOTONIC, &stk_begin);
 		for (i = 1, t = strtok(buf, delim); t != NULL && *t != '#'; i++, t = strtok(NULL, delim)) {
 			if (i == column)
 				break;
-		}
-		clock_gettime(CLOCK_MONOTONIC, &stk_end);
-		timing[0] += elapsed_us(&stk_begin, &stk_end);
-		iterations[0] += 1;
-		
+		}	
 
 		if (t == NULL || *t == '#')
 			continue;
 
-		//timing
-		clock_gettime(CLOCK_MONOTONIC, &str_begin);
-		d = strtod(t, &p);
-		clock_gettime(CLOCK_MONOTONIC, &str_end);
-		timing[1] += elapsed_us(&str_begin, &str_end);
-		iterations[1] += 1;
-		//timing
+    num_datapoints += 1;
+		d = strtod_fast(t, &p);
 
 		if (p != NULL && *p != '\0')
 			err(2, "Invalid data on line %d in %s\n", line, n);
@@ -564,8 +555,9 @@ ReadSet(void* arg)
 	an_qsort_doubles(s->points, s->n);
 	clock_gettime(CLOCK_MONOTONIC, &q_end);
 
-	timing[2] += elapsed_us(&q_begin, &q_end);
-	iterations[2] += 1;
+	timing[0] += elapsed_us(&q_begin, &q_end);
+	iterations[0] += 1;
+
 	//return (s); // set s to rs->s = s;
 	rs -> s = s; // don't think this works
 	return NULL;
@@ -709,8 +701,8 @@ main(int argc, char **argv)
 
 		clock_gettime(CLOCK_MONOTONIC, &end);
 	}
-	timing[3] = elapsed_us(&begin, &end);
-	iterations[3] += 1;
+	timing[1] = elapsed_us(&begin, &end);
+	iterations[1] += 1;
 
 	if(!flag_v){
 		for (i = 0; i < nds; i++)
@@ -741,13 +733,11 @@ main(int argc, char **argv)
 	
 
 	if (flag_v){
-		printf("num_datapoints\tstrtok_avg (us)\tstrtod_avg (us)\tqsort (us)\tReadSet (us)\n");
-		printf("%llu\t%f\t%f\t%f\t%f\n",
-			iterations[1],
+		printf("num_datapoints\tqsort (us)\tReadSet (us)\n");
+		printf("%llu\t%f\t%f\n",
+			num_datapoints,
 			((double) timing[0]) / iterations[0],
-			((double) timing[1]) / iterations[1],
-			((double) timing[2]) / iterations[2],
-			((double) timing[3]) / iterations[3]
+			((double) timing[1]) / iterations[1]
 		);
 	}
 
